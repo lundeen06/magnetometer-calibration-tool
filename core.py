@@ -11,9 +11,10 @@ from datetime import datetime
 import threading
 
 class MagnetometerCalibrator:
-    def __init__(self, port='/dev/tty.usbmodem101', baudrate=115200):
+    def __init__(self, port='/dev/tty.usbmodem101', baudrate=115200, data_pattern=None):
         self.port = port
         self.baudrate = baudrate
+        self.data_pattern = data_pattern or r'Magnetometer reading: \[([-\d.]+), ([-\d.]+), ([-\d.]+)\]'
         self.raw_data = []
         self.calibration_params = None
         self.calibration_quality = None
@@ -93,6 +94,13 @@ class MagnetometerCalibrator:
 
     def collect_data(self, min_samples=1000, enable_plot=True):
         """Collect magnetometer data over serial for calibration with auto-reconnect"""
+        print(f"\nUsing data pattern: {self.data_pattern}")
+        print(f"Connecting to: {self.port} at {self.baudrate} baud")
+        print("\nTip: If no data is being collected, check:")
+        print("- Your device is connected and powered")
+        print("- The serial port is correct")
+        print("- The data pattern matches your device's output format")
+        print("- Your device is actually sending magnetometer data\n")
         print(f"Collecting {min_samples} magnetometer samples...")
         print("Rotate the satellite/magnetometer in all orientations!")
         
@@ -103,7 +111,7 @@ class MagnetometerCalibrator:
         sample_count = 0
         reconnect_delay = 3 # seconds
         ser = None
-        pattern = r'Magnetometer reading: \[([-\d.]+), ([-\d.]+), ([-\d.]+)\]'
+        pattern = self.data_pattern
         
         while sample_count < min_samples:
             try:
@@ -118,9 +126,21 @@ class MagnetometerCalibrator:
                 
                 match = re.search(pattern, line)
                 if match:
-                    x, y, z = map(float, match.groups())
-                    self.raw_data.append([x, y, z])
-                    sample_count += 1
+                    try:
+                        if len(match.groups()) != 3:
+                            print(f"\nWarning: Pattern matched but found {len(match.groups())} values instead of 3")
+                            continue
+                        x, y, z = map(float, match.groups())
+                        self.raw_data.append([x, y, z])
+                        sample_count += 1
+                    except ValueError as e:
+                        print(f"\nWarning: Could not convert values to float: {match.groups()} - {e}")
+                        continue
+                elif line.strip():  # Only show non-empty lines that don't match
+                    if sample_count == 0:  # Show first few non-matching lines to help debug
+                        print(f"\nDebug - Line didn't match pattern: '{line[:100]}...' " if len(line) > 100 else f"\nDebug - Line didn't match pattern: '{line}'")
+                        if sample_count == 0:
+                            print(f"Expected pattern: {pattern}")
                     
                     # Update plot every 25 samples to avoid slowing down data collection
                     if self.plot_enabled and sample_count % 25 == 0:
@@ -133,7 +153,7 @@ class MagnetometerCalibrator:
                 
             except (serial.SerialException, OSError) as e:
                 # Serial connection issues - likely watchdog reboot
-                print(f"Connection lost (likely watchdog reboot): {e}")
+                print(f"\nConnection lost: {e}")
                 if ser and ser.is_open:
                     try:
                         ser.close()
@@ -142,6 +162,7 @@ class MagnetometerCalibrator:
                 ser = None
                 
                 print(f"Waiting {reconnect_delay}s before reconnection attempt...")
+                print("(Press Ctrl+C to stop if the device is not available)")
                 time.sleep(reconnect_delay)
                 continue
             except Exception as e:
@@ -376,31 +397,154 @@ class MagnetometerCalibrator:
             f.write(f"}};\n\n")
         
         print(f"Calibration report saved to: {header_filename}")
+    
+    @staticmethod
+    def configure_from_user_input():
+        """Interactive configuration of calibrator settings"""
+        print("\n" + "=" * 50)
+        print("MAGNETOMETER CALIBRATION SETUP")
+        print("=" * 50)
+        
+        # Serial port configuration
+        print("\n1. Serial Port Configuration:")
+        port = input("Enter serial port (default: /dev/tty.usbmodem101): ").strip()
+        if not port:
+            port = '/dev/tty.usbmodem101'
+        
+        baudrate_input = input("Enter baudrate (default: 115200): ").strip()
+        try:
+            baudrate = int(baudrate_input) if baudrate_input else 115200
+        except ValueError:
+            print("Invalid baudrate, using default 115200")
+            baudrate = 115200
+        
+        # Data format configuration
+        print("\n2. Data Format Configuration:")
+        print("Current default pattern: 'Magnetometer reading: [x, y, z]'")
+        print("Examples of other common patterns:")
+        print("  - 'MAG: x,y,z'")
+        print("  - 'x y z'")
+        print("  - '[x][y][z]'")
+        print("  - JSON format: '{\"x\":val,\"y\":val,\"z\":val}'")
+        
+        use_custom = input("\nUse custom data pattern? (y/N): ").strip().lower()
+        
+        data_pattern = None
+        if use_custom in ['y', 'yes']:
+            print("\nEnter regex pattern to match your magnetometer data.")
+            print("Use ([-\\d.]+) to capture each numeric value (x, y, z).")
+            print("Example: r'MAG: ([-\\d.]+),([-\\d.]+),([-\\d.]+)'")
+            
+            while True:
+                pattern_input = input("Enter pattern: ").strip()
+                if not pattern_input:
+                    print("No pattern entered, using default")
+                    break
+                
+                # Validate the pattern
+                try:
+                    import re
+                    compiled_pattern = re.compile(pattern_input)
+                    # Check if pattern has exactly 3 capturing groups
+                    test_match = compiled_pattern.search("dummy")
+                    if pattern_input.count('(') != 3 or pattern_input.count(')') != 3:
+                        print("Error: Pattern must have exactly 3 capturing groups for x, y, z values")
+                        print("Please try again or press Enter to use default.")
+                        continue
+                    
+                    data_pattern = pattern_input
+                    print(f"Pattern validated successfully: {data_pattern}")
+                    break
+                    
+                except re.error as e:
+                    print(f"Invalid regex pattern: {e}")
+                    print("Please try again or press Enter to use default.")
+        
+        # Sample configuration
+        print("\n3. Sample Configuration:")
+        samples_input = input("Number of samples to collect (default: 1000): ").strip()
+        try:
+            min_samples = int(samples_input) if samples_input else 1000
+        except ValueError:
+            print("Invalid sample count, using default 1000")
+            min_samples = 1000
+        
+        # Calibration method
+        print("\n4. Calibration Method:")
+        print("  sphere   - Simple hard iron correction (offset only)")
+        print("  ellipsoid - Advanced correction (hard + soft iron effects)")
+        method = input("Choose method (default: ellipsoid): ").strip().lower()
+        if method not in ['sphere', 'ellipsoid']:
+            method = 'ellipsoid'
+        
+        return {
+            'port': port,
+            'baudrate': baudrate,
+            'data_pattern': data_pattern,
+            'min_samples': min_samples,
+            'method': method
+        }
 
 # Example usage
 if __name__ == "__main__":
     print("=" * 60)
     print("MAGNETOMETER CALIBRATION SCRIPT")
     print("=" * 60)
-    print("\nIMPORTANT: Before starting calibration:")
-    print("1. Go to src/drivers/magnetometer.cpp")
-    print("2. Comment out the normalization line in rm3100_get_reading()")
-    print("3. Flash the updated firmware to your device")
-    print("4. We need raw magnetometer values, not normalized ones!")
-    print("\nPress Enter when ready to continue...")
+    
+    # Get configuration from user
+    config = MagnetometerCalibrator.configure_from_user_input()
+    
+    print("\n" + "=" * 50)
+    print("IMPORTANT PREPARATION STEPS:")
+    print("=" * 50)
+    print("1. Ensure your magnetometer is connected and sending data")
+    print("2. Make sure you're getting RAW magnetometer values (not normalized)")
+    print("3. Prepare to rotate your device in ALL orientations during collection")
+    print("4. The more varied your orientations, the better the calibration!")
+    print("\nPress Enter when ready to start data collection...")
     input()
     
-    # Initialize calibrator
-    cal = MagnetometerCalibrator(port='/dev/tty.usbmodem101')  # Adjust port as needed
+    # Initialize calibrator with user configuration
+    cal = MagnetometerCalibrator(
+        port=config['port'],
+        baudrate=config['baudrate'],
+        data_pattern=config['data_pattern']
+    )
     
-    # Collect new data and save it
-    if cal.collect_data(min_samples=10000):
-        json_filename = cal.save_data_to_file()
-        # Load the data we just saved (demonstrates the load functionality)
-        cal.load_data_from_file(json_filename)
-    
-    # Perform calibration (choose method)
-    cal.calibrate(method='sphere') 
-    
-    # Generate comprehensive report
-    cal.save_calibration()
+    try:
+        # Collect new data and save it
+        if cal.collect_data(min_samples=config['min_samples']):
+            json_filename = cal.save_data_to_file()
+            print(f"\nData collection successful! Saved to: {json_filename}")
+            
+            # Perform calibration
+            print(f"\nStarting calibration using {config['method']} method...")
+            cal.calibrate(method=config['method'])
+            
+            # Generate comprehensive report
+            cal.save_calibration()
+            
+            print("\n" + "=" * 50)
+            print("CALIBRATION COMPLETE!")
+            print("=" * 50)
+            print("Check the 'output' directory for:")
+            print("- Raw data JSON file")
+            print("- C header file with calibration parameters")
+            
+        else:
+            print("\nFailed to collect sufficient data. Please check:")
+            print("- Serial connection and port")
+            print("- Data format pattern")
+            print("- Device is sending magnetometer data")
+            
+    except KeyboardInterrupt:
+        print("\n\nCalibration interrupted by user.")
+        if len(cal.raw_data) > 500:
+            print(f"Collected {len(cal.raw_data)} samples before interruption.")
+            save_partial = input("Save partial data? (y/N): ").strip().lower()
+            if save_partial in ['y', 'yes']:
+                cal.save_data_to_file()
+                print("Partial data saved.")
+    except Exception as e:
+        print(f"\nError during calibration: {e}")
+        print("Please check your configuration and try again.")
