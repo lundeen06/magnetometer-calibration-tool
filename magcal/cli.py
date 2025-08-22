@@ -158,12 +158,12 @@ def _display_header():
 ██║ ╚═╝ ██║██║  ██║╚██████╔╝╚██████╗██║  ██║███████╗
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
 
-[dim]A CLI-based magnetometer calibration tool for embedded systems[/dim]
+[white]A CLI-based magnetometer calibration tool for embedded systems[/white]
 """
     
     console.print(Panel(
         Align.center(ascii_banner.strip()),
-        style="white",
+        style="bold white",
         padding=(1, 2),
         border_style="blue"
     ))
@@ -510,7 +510,19 @@ def _run_interactive_menu():
     
     _display_header()
     
-    console.print("🎯 [bold cyan]Welcome to MAGCAL![/bold cyan]\n")
+    # Check if this is a first-time user
+    if _is_first_time_user():
+        console.print("🎯 [bold white]Welcome to MAGCAL![/bold white]\n")
+        console.print("👋 [yellow]Looks like this is your first time using MAGCAL![/yellow]")
+        console.print("[dim]Let's get you set up with an interactive configuration...[/dim]\n")
+        
+        if questionary.confirm("🚀 Ready to configure your magnetometer calibration?", default=True).ask():
+            _run_first_time_setup()
+            return
+        else:
+            console.print("[dim]You can always run setup later by selecting 'Interactive Setup' from the menu.[/dim]\n")
+
+    console.print("🎯 [bold white]Welcome back to MAGCAL![/bold white]\n")
     console.print("[dim]Use ↑↓ arrow keys to navigate and Enter to select[/dim]\n")
     
     # Create menu choices with questionary
@@ -678,6 +690,104 @@ def _run_interactive_menu():
             break
     
     console.print()
+
+def _is_first_time_user():
+    """Check if this is a first-time user by looking for previous calibration files or config"""
+    output_dir = "output"
+    
+    # Check if output directory exists and has any calibration files
+    if os.path.exists(output_dir):
+        json_files = [f for f in os.listdir(output_dir) if f.endswith('.json')]
+        header_files = [f for f in os.listdir(output_dir) if f.endswith('.h')]
+        if json_files or header_files:
+            return False
+    
+    # Could also check for a config file in the future
+    # if os.path.exists('.magcal_config'):
+    #     return False
+    
+    return True
+
+def _run_first_time_setup():
+    """Run the first-time setup flow for new users"""
+    console.print("🛠️ [bold green]First-Time Setup[/bold green]\n")
+    
+    # Show preparation instructions
+    prep_panel = Panel(
+        "[bold]Before we start, please ensure:[/bold]\n\n"
+        "1. 🔌 Your magnetometer is connected via serial\n"
+        "2. 📡 Device is sending RAW magnetometer data (not normalized)\n"
+        "3. 🔧 You know your serial port and baudrate\n"
+        "4. 📝 You have the correct data format pattern\n\n"
+        "[yellow]💡 Tip: Check your device documentation for data format details[/yellow]",
+        title="🚀 Preparation Checklist",
+        style="yellow"
+    )
+    console.print(prep_panel)
+    console.print()
+    
+    if not questionary.confirm("✅ Have you completed the preparation steps above?", default=True).ask():
+        console.print("\n📖 [cyan]Please complete the preparation steps and run 'magcal' again when ready.[/cyan]")
+        console.print("💡 [dim]You can also check the README for detailed setup instructions.[/dim]\n")
+        return
+    
+    console.print("\n🎯 [bold cyan]Great! Let's configure your magnetometer...[/bold cyan]\n")
+    
+    # Get configuration interactively
+    config = _get_interactive_config()
+    
+    # Show configuration summary
+    console.print("📋 [bold]Configuration Summary:[/bold]\n")
+    summary_table = Table(style="cyan", show_header=False)
+    summary_table.add_column("Setting", style="bold")
+    summary_table.add_column("Value", style="green")
+    
+    summary_table.add_row("Serial Port", config['port'])
+    summary_table.add_row("Baudrate", str(config['baudrate']))
+    summary_table.add_row("Samples", str(config['samples']))
+    summary_table.add_row("Method", config['method'].title())
+    summary_table.add_row("Custom Pattern", config.get('pattern', 'Default'))
+    
+    console.print(summary_table)
+    console.print()
+    
+    if questionary.confirm("🚀 Start your first calibration with these settings?", default=True).ask():
+        cal = MagnetometerCalibrator(
+            port=config['port'],
+            baudrate=config['baudrate'],
+            data_pattern=config.get('pattern')
+        )
+        
+        try:
+            console.print("\n🎉 [bold green]Starting your first calibration![/bold green]\n")
+            console.print("📝 [yellow]Remember to rotate your device in ALL orientations during data collection![/yellow]\n")
+            
+            if _collect_data_with_progress(cal, config['samples'], True):
+                _perform_calibration_with_status(cal, config['method'])
+                _display_results(cal)
+                _save_results_with_status(cal)
+                
+                # Show success message for first-time users
+                success_panel = Panel(
+                    "[bold green]🎉 Congratulations![/bold green]\n\n"
+                    "You've successfully completed your first magnetometer calibration!\n\n"
+                    "✅ Your calibration files are ready in the 'output' directory\n"
+                    "✅ You can now run 'magcal' anytime for quick access to all features\n"
+                    "✅ Use 'magcal monitor' to view real-time data\n"
+                    "✅ Use 'magcal from-file' to recalibrate existing data\n\n"
+                    "[dim]Happy calibrating! 🛰️[/dim]",
+                    title="🏁 Setup Complete",
+                    style="green"
+                )
+                console.print(success_panel)
+            else:
+                console.print("❌ [red]Calibration failed. Please check your setup and try again.[/red]")
+                
+        except KeyboardInterrupt:
+            _handle_interruption(cal)
+            console.print("\n💡 [cyan]Setup interrupted. Run 'magcal' again to continue setup or access the main menu.[/cyan]")
+    else:
+        console.print("\n🔄 [yellow]Setup cancelled. You can run 'magcal' again anytime to continue.[/yellow]")
 
 if __name__ == "__main__":
     main()
