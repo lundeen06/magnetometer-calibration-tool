@@ -23,6 +23,15 @@ from .core import MagnetometerCalibrator
 
 console = Console()
 
+def _convert_pattern_to_regex(pattern):
+    """Convert simple pattern format to regex"""
+    import re
+    # Convert simple pattern to regex
+    regex_pattern = pattern.replace('\\x', '([-\\d.]+)').replace('\\y', '([-\\d.]+)').replace('\\z', '([-\\d.]+)')
+    # Escape special regex characters except our groups
+    regex_pattern = re.escape(regex_pattern).replace('\\(\\[\\-\\\\d\\.\\]\\+\\)', '([-\\d.]+)')
+    return regex_pattern
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.version_option(version="1.0.0")
@@ -37,10 +46,13 @@ def main(ctx):
 @click.option('--baudrate', '-b', default=115200, help='Serial baudrate')
 @click.option('--samples', '-n', default=1000, help='Number of samples to collect')
 @click.option('--method', '-m', type=click.Choice(['sphere', 'ellipsoid']), default='ellipsoid', help='Calibration method')
-@click.option('--pattern', help='Custom regex pattern for data parsing')
+@click.option('--pattern', required=True, help='Data format pattern (use \\x, \\y, \\z for numbers)')
 @click.option('--no-plot', is_flag=True, help='Disable real-time plotting')
 def calibrate(port, baudrate, samples, method, pattern, no_plot):
     """🎯 Run complete magnetometer calibration workflow"""
+    
+    # Convert pattern format
+    regex_pattern = _convert_pattern_to_regex(pattern)
     
     # Display beautiful header
     _display_header()
@@ -52,7 +64,7 @@ def calibrate(port, baudrate, samples, method, pattern, no_plot):
     cal = MagnetometerCalibrator(
         port=port,
         baudrate=baudrate,
-        data_pattern=pattern
+        data_pattern=regex_pattern
     )
     
     try:
@@ -131,9 +143,12 @@ def from_file(data_file, method):
 @main.command()
 @click.option('--port', '-p', default='/dev/tty.usbmodem101', help='Serial port path')
 @click.option('--baudrate', '-b', default=115200, help='Serial baudrate')
-@click.option('--pattern', help='Custom regex pattern for data parsing')
+@click.option('--pattern', required=True, help='Data format pattern (use \\x, \\y, \\z for numbers)')
 def monitor(port, baudrate, pattern):
     """📡 Monitor real-time magnetometer data"""
+    
+    # Convert pattern format
+    regex_pattern = _convert_pattern_to_regex(pattern)
     
     _display_header()
     
@@ -143,7 +158,7 @@ def monitor(port, baudrate, pattern):
     cal = MagnetometerCalibrator(
         port=port,
         baudrate=baudrate,
-        data_pattern=pattern
+        data_pattern=regex_pattern
     )
     
     _monitor_realtime_data(cal)
@@ -416,13 +431,48 @@ def _get_interactive_config():
     config['baudrate'] = int(questionary.text("Baudrate:", default="115200").ask())
     console.print()
     
-    # Data format
-    console.print("📡 [bold]Data Format[/bold]\n")
-    use_custom = questionary.confirm("Use custom data pattern?", default=False).ask()
-    if use_custom:
-        console.print("\n[yellow]Enter regex pattern with 3 capturing groups for x, y, z values[/yellow]")
-        console.print("[dim]Example: r'MAG: ([-\\d.]+),([-\\d.]+),([-\\d.]+)'[/dim]\n")
-        config['pattern'] = questionary.text("Pattern:").ask()
+    # Data format - REQUIRED
+    console.print("📡 [bold]Data Format Configuration[/bold]\n")
+    console.print("[white]Your device sends magnetometer data in a specific format.[/white]")
+    console.print("[white]Tell us the format by using \\x, \\y, \\z where the numbers appear.[/white]\n")
+    
+    console.print("[dim]Examples:[/dim]")
+    console.print("[dim]  • If your data looks like: 'Magnetometer: [1.23, 4.56, 7.89]'[/dim]")
+    console.print("[dim]    Then enter: 'Magnetometer: [\\x, \\y, \\z]'[/dim]")
+    console.print("[dim]  • If your data looks like: 'MAG: x=1.23 y=4.56 z=7.89'[/dim]")
+    console.print("[dim]    Then enter: 'MAG: x=\\x y=\\y z=\\z'[/dim]")
+    console.print("[dim]  • If your data looks like: '1.23,4.56,7.89'[/dim]")
+    console.print("[dim]    Then enter: '\\x,\\y,\\z'[/dim]\n")
+    
+    while True:
+        pattern_input = questionary.text(
+            "Enter your data format pattern:",
+            instruction="(use \\x, \\y, \\z for numbers)"
+        ).ask()
+        
+        if not pattern_input:
+            console.print("[red]❌ Data format is required. Please enter a pattern.[/red]\n")
+            continue
+            
+        # Check if pattern contains x, y, z placeholders
+        if '\\x' not in pattern_input or '\\y' not in pattern_input or '\\z' not in pattern_input:
+            console.print("[red]❌ Pattern must contain \\x, \\y, and \\z placeholders.[/red]\n")
+            continue
+            
+        # Convert simple pattern to regex
+        regex_pattern = pattern_input.replace('\\x', '([-\\d.]+)').replace('\\y', '([-\\d.]+)').replace('\\z', '([-\\d.]+)')
+        # Escape special regex characters except our groups
+        import re
+        regex_pattern = re.escape(regex_pattern).replace('\\(\\[\\-\\\\d\\.\\]\\+\\)', '([-\\d.]+)')
+        
+        console.print(f"[dim]Generated regex: {regex_pattern}[/dim]")
+        
+        if questionary.confirm("Does this look correct?", default=True).ask():
+            config['pattern'] = regex_pattern
+            break
+        else:
+            console.print("[yellow]Let's try again...[/yellow]\n")
+    
     console.print()
     
     # Sample configuration
