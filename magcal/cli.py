@@ -22,11 +22,14 @@ from .core import MagnetometerCalibrator
 
 console = Console()
 
-@click.group()
+@click.group(invoke_without_command=True)
+@click.pass_context
 @click.version_option(version="1.0.0")
-def main():
+def main(ctx):
     """🧭 A Magnetometer Calibration Tool for Embedded Systems"""
-    pass
+    if ctx.invoked_subcommand is None:
+        # User just typed 'magcal' - show interactive menu
+        _run_interactive_menu()
 
 @main.command()
 @click.option('--port', '-p', default='/dev/tty.usbmodem101', help='Serial port path')
@@ -497,6 +500,177 @@ def _monitor_realtime_data(cal):
         console.print("\n✅ [green]Monitoring stopped[/green]")
     except Exception as e:
         console.print(f"\n❌ [red]Monitor error: {e}[/red]")
+
+def _run_interactive_menu():
+    """Run the main interactive menu when user types just 'magcal'"""
+    
+    _display_header()
+    
+    console.print("🎯 [bold cyan]Welcome to MAGCAL![/bold cyan]\n")
+    console.print("What would you like to do today?\n")
+    
+    menu_options = {
+        "1": ("🚀 Run Full Calibration", "Complete magnetometer calibration workflow"),
+        "2": ("📡 Monitor Real-time Data", "View live magnetometer readings"),
+        "3": ("📁 Calibrate from File", "Use existing data file for calibration"),
+        "4": ("⚙️ Interactive Setup", "Guided configuration and calibration"),
+        "5": ("❓ Show Help", "Display all available commands"),
+        "6": ("🚪 Exit", "Exit the application")
+    }
+    
+    # Display menu
+    menu_table = Table(title="📋 Main Menu", style="cyan", show_header=False)
+    menu_table.add_column("Option", style="bold yellow", width=8)
+    menu_table.add_column("Action", style="bold white")
+    menu_table.add_column("Description", style="dim")
+    
+    for key, (action, description) in menu_options.items():
+        menu_table.add_row(f"[{key}]", action, description)
+    
+    console.print(menu_table)
+    console.print()
+    
+    while True:
+        choice = Prompt.ask("🎯 Select an option", choices=list(menu_options.keys()), default="1")
+        console.print()
+        
+        if choice == "1":
+            # Run full calibration with default settings
+            console.print("🚀 [bold green]Starting full calibration with default settings...[/bold green]\n")
+            cal = MagnetometerCalibrator()
+            try:
+                if _collect_data_with_progress(cal, 1000, True):
+                    _perform_calibration_with_status(cal, 'ellipsoid')
+                    _display_results(cal)
+                    _save_results_with_status(cal)
+                    break
+            except KeyboardInterrupt:
+                _handle_interruption(cal)
+                break
+                
+        elif choice == "2":
+            # Monitor real-time data
+            console.print("📡 [bold green]Starting real-time monitor...[/bold green]\n")
+            cal = MagnetometerCalibrator()
+            _monitor_realtime_data(cal)
+            break
+            
+        elif choice == "3":
+            # Calibrate from file
+            console.print("📁 [bold green]Calibrate from existing file[/bold green]\n")
+            
+            # List available JSON files in output directory
+            output_dir = "output"
+            if os.path.exists(output_dir):
+                json_files = [f for f in os.listdir(output_dir) if f.endswith('.json')]
+                if json_files:
+                    console.print("📂 Available data files:")
+                    for i, file in enumerate(json_files, 1):
+                        console.print(f"  {i}. {file}")
+                    console.print()
+                    
+                    file_choice = Prompt.ask("Enter file number or full path")
+                    
+                    try:
+                        # Check if it's a number (selecting from list)
+                        file_index = int(file_choice) - 1
+                        if 0 <= file_index < len(json_files):
+                            data_file = os.path.join(output_dir, json_files[file_index])
+                        else:
+                            console.print("❌ [red]Invalid file number[/red]")
+                            continue
+                    except ValueError:
+                        # It's a file path
+                        data_file = file_choice
+                        
+                    if os.path.exists(data_file):
+                        cal = MagnetometerCalibrator()
+                        cal.load_data_from_file(data_file)
+                        _perform_calibration_with_status(cal, 'ellipsoid')
+                        _display_results(cal)
+                        _save_results_with_status(cal)
+                        break
+                    else:
+                        console.print("❌ [red]File not found[/red]")
+                        continue
+                else:
+                    console.print("❌ [red]No data files found in output directory[/red]")
+                    data_file = Prompt.ask("Enter full path to data file")
+                    if os.path.exists(data_file):
+                        cal = MagnetometerCalibrator()
+                        cal.load_data_from_file(data_file)
+                        _perform_calibration_with_status(cal, 'ellipsoid')
+                        _display_results(cal)
+                        _save_results_with_status(cal)
+                        break
+                    else:
+                        console.print("❌ [red]File not found[/red]")
+                        continue
+            else:
+                data_file = Prompt.ask("Enter full path to data file")
+                if os.path.exists(data_file):
+                    cal = MagnetometerCalibrator()
+                    cal.load_data_from_file(data_file)
+                    _perform_calibration_with_status(cal, 'ellipsoid')
+                    _display_results(cal)
+                    _save_results_with_status(cal)
+                    break
+                else:
+                    console.print("❌ [red]File not found[/red]")
+                    continue
+                    
+        elif choice == "4":
+            # Interactive setup
+            console.print("⚙️ [bold green]Starting interactive setup...[/bold green]\n")
+            config = _get_interactive_config()
+            
+            if Confirm.ask("🚀 Start calibration with these settings?"):
+                cal = MagnetometerCalibrator(
+                    port=config['port'],
+                    baudrate=config['baudrate'],
+                    data_pattern=config.get('pattern')
+                )
+                
+                try:
+                    if _collect_data_with_progress(cal, config['samples'], True):
+                        _perform_calibration_with_status(cal, config['method'])
+                        _display_results(cal)
+                        _save_results_with_status(cal)
+                        break
+                except KeyboardInterrupt:
+                    _handle_interruption(cal)
+                    break
+            else:
+                console.print("🔄 [yellow]Returning to main menu...[/yellow]\n")
+                continue
+                
+        elif choice == "5":
+            # Show help
+            console.print("❓ [bold green]Available Commands:[/bold green]\n")
+            
+            help_table = Table(title="🔧 Command Reference", style="blue")
+            help_table.add_column("Command", style="bold cyan")
+            help_table.add_column("Description", style="white")
+            
+            help_table.add_row("magcal", "Show this interactive menu")
+            help_table.add_row("magcal calibrate", "Run calibration with command-line options")
+            help_table.add_row("magcal interactive", "Interactive configuration mode")
+            help_table.add_row("magcal monitor", "Real-time data monitoring")
+            help_table.add_row("magcal from-file <file>", "Calibrate from existing data file")
+            help_table.add_row("magcal --help", "Show detailed help for all commands")
+            
+            console.print(help_table)
+            console.print()
+            
+            if not Confirm.ask("🔄 Return to main menu?", default=True):
+                break
+                
+        elif choice == "6":
+            # Exit
+            console.print("👋 [bold blue]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold blue]")
+            break
+    
+    console.print()
 
 if __name__ == "__main__":
     main()

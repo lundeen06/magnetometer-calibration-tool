@@ -34,26 +34,22 @@ pip install -e .
 
 ### Basic Usage
 
-Just type `magcal` to see all available commands:
+Just type `magcal` to launch the interactive menu:
 
 ```bash
 magcal
 ```
 
-### Quick Calibration
+This will show you a beautiful menu with all available options - perfect for getting started quickly!
 
-Run a complete calibration workflow:
+### Direct Commands
 
-```bash
-magcal calibrate
-```
-
-### Interactive Mode
-
-For guided setup and configuration:
+You can also use specific commands directly:
 
 ```bash
-magcal interactive
+magcal calibrate     # Run calibration with default settings
+magcal interactive   # Guided configuration mode
+magcal monitor       # Real-time data monitoring
 ```
 
 ## 📋 Commands
