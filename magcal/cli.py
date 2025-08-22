@@ -85,7 +85,7 @@ def interactive():
     
     _display_header()
     
-    console.print("🎮 [bold cyan]Interactive Configuration Mode[/bold cyan]\n")
+    console.print("🎮 [bold white]Interactive Configuration Mode[/bold white]\n")
     
     # Get configuration interactively
     config = _get_interactive_config()
@@ -114,7 +114,7 @@ def from_file(data_file, method):
     
     _display_header()
     
-    console.print(f"📁 [cyan]Loading data from: {data_file}[/cyan]\n")
+    console.print(f"📁 [white]Loading data from: {data_file}[/white]\n")
     
     cal = MagnetometerCalibrator()
     
@@ -122,7 +122,7 @@ def from_file(data_file, method):
         cal.load_data_from_file(data_file)
         time.sleep(0.5)  # Visual feedback
     
-    console.print(f"✅ [green]Loaded {len(cal.raw_data)} samples[/green]\n")
+    console.print(f"✅ [white]Loaded {len(cal.raw_data)} samples[/white]\n")
     
     _perform_calibration_with_status(cal, method)
     _display_results(cal)
@@ -137,7 +137,7 @@ def monitor(port, baudrate, pattern):
     
     _display_header()
     
-    console.print("📡 [bold cyan]Real-time Magnetometer Monitor[/bold cyan]\n")
+    console.print("📡 [bold white]Real-time Magnetometer Monitor[/bold white]\n")
     console.print("Press Ctrl+C to stop monitoring\n")
     
     cal = MagnetometerCalibrator(
@@ -165,15 +165,15 @@ def _display_header():
         Align.center(ascii_banner.strip()),
         style="bold white",
         padding=(1, 2),
-        border_style="blue"
+        border_style="white"
     ))
     console.print()
 
 def _display_config(port, baudrate, samples, method, pattern, plot_enabled):
     """Display configuration in a beautiful table"""
-    config_table = Table(title="📋 Configuration", style="cyan")
-    config_table.add_column("Setting", style="bold")
-    config_table.add_column("Value", style="green")
+    config_table = Table(title="📋 Configuration", style="white")
+    config_table.add_column("Setting", style="bold white")
+    config_table.add_column("Value", style="red")
     
     config_table.add_row("Serial Port", port)
     config_table.add_row("Baudrate", str(baudrate))
@@ -198,7 +198,7 @@ def _collect_data_with_progress(cal, min_samples, enable_plot):
         "3. 🔄 Prepare to rotate device in ALL orientations\n"
         "4. ⏰ Collection will start automatically",
         title="🚀 Get Ready",
-        style="yellow"
+        style="white"
     )
     console.print(prep_panel)
     console.print()
@@ -282,7 +282,7 @@ def _collect_with_rich_progress(cal, min_samples, enable_plot):
             except:
                 pass
     
-    console.print(f"✅ [green]Collection complete! Got {len(cal.raw_data)} samples[/green]\n")
+    console.print(f"✅ [white]Collection complete! Got {len(cal.raw_data)} samples[/white]\n")
     return True
 
 def _perform_calibration_with_status(cal, method):
@@ -294,7 +294,7 @@ def _perform_calibration_with_status(cal, method):
         cal.calibrate(method=method)
         time.sleep(1)  # Visual feedback
     
-    console.print(f"✅ [green]Calibration complete using {method} method[/green]\n")
+    console.print(f"✅ [white]Calibration complete using {method} method[/white]\n")
 
 def _display_results(cal):
     """Display calibration results in beautiful format"""
@@ -303,9 +303,9 @@ def _display_results(cal):
     
     if cal.calibration_quality:
         # Quality metrics table
-        quality_table = Table(title="📈 Quality Metrics", style="green")
-        quality_table.add_column("Metric", style="bold")
-        quality_table.add_column("Value", style="cyan")
+        quality_table = Table(title="📈 Quality Metrics", style="white")
+        quality_table.add_column("Metric", style="bold white")
+        quality_table.add_column("Value", style="red")
         quality_table.add_column("Assessment", style="yellow")
         
         sphericity = cal.calibration_quality['sphericity']
@@ -334,7 +334,7 @@ def _display_results(cal):
         params_panel = Panel(
             _format_calibration_params(cal.calibration_params),
             title="🎯 Calibration Parameters",
-            style="blue"
+            style="white"
         )
         console.print(params_panel)
         console.print()
@@ -374,9 +374,9 @@ def _save_results_with_status(cal):
         time.sleep(0.5)
     
     # Show saved files
-    files_table = Table(title="📁 Generated Files", style="green")
-    files_table.add_column("Type", style="bold")
-    files_table.add_column("Location", style="cyan")
+    files_table = Table(title="📁 Generated Files", style="white")
+    files_table.add_column("Type", style="bold white")
+    files_table.add_column("Location", style="red")
     
     files_table.add_row("Raw Data (JSON)", json_file)
     files_table.add_row("Calibration (C Header)", "output/mag_calibration_*.h")
@@ -385,10 +385,10 @@ def _save_results_with_status(cal):
     console.print()
     
     success_panel = Panel(
-        "[bold green]🎉 Calibration Complete![/bold green]\n\n"
+        "[bold white]🎉 Calibration Complete![/bold white]\n\n"
         "Your calibration files are ready for use in embedded systems.\n"
         "Check the 'output' directory for all generated files.",
-        style="green"
+        style="white"
     )
     console.print(success_panel)
 
@@ -403,7 +403,7 @@ def _handle_interruption(cal):
             with Status("Saving partial data...", spinner="dots"):
                 cal.save_data_to_file()
                 time.sleep(0.5)
-            console.print("✅ [green]Partial data saved[/green]")
+            console.print("✅ [white]Partial data saved[/white]")
 
 def _get_interactive_config():
     """Get configuration interactively with questionary prompts"""
@@ -427,7 +427,7 @@ def _get_interactive_config():
     
     # Sample configuration
     console.print("📊 [bold]Sample Configuration[/bold]\n")
-    config['samples'] = int(questionary.text("Number of samples:", default="1000").ask())
+    config['samples'] = int(questionary.text("Number of samples:", default="5000").ask())
     console.print()
     
     # Calibration method
@@ -463,9 +463,9 @@ def _monitor_realtime_data(cal):
     def make_data_table():
         table = Table(title="📡 Live Magnetometer Data")
         table.add_column("Time", style="dim")
-        table.add_column("X (µT)", style="red")
-        table.add_column("Y (µT)", style="green") 
-        table.add_column("Z (µT)", style="blue")
+        table.add_column("X (µT)", style="white")
+        table.add_column("Y (µT)", style="white") 
+        table.add_column("Z (µT)", style="white")
         table.add_column("Magnitude", style="yellow")
         
         for timestamp, x, y, z in list(data_buffer)[-10:]:  # Show last 10 readings
@@ -481,7 +481,7 @@ def _monitor_realtime_data(cal):
     
     try:
         with Live(layout, refresh_per_second=4, console=console) as live:
-            layout["header"].update(Panel("🔄 Monitoring... Press Ctrl+C to stop", style="blue"))
+            layout["header"].update(Panel("🔄 Monitoring... Press Ctrl+C to stop", style="white"))
             layout["footer"].update(Panel(f"Connected to: {cal.port} @ {cal.baudrate} baud", style="dim"))
             
             ser = serial.Serial(cal.port, cal.baudrate, timeout=1)
@@ -501,7 +501,7 @@ def _monitor_realtime_data(cal):
                     continue
                     
     except KeyboardInterrupt:
-        console.print("\n✅ [green]Monitoring stopped[/green]")
+        console.print("\n✅ [white]Monitoring stopped[/white]")
     except Exception as e:
         console.print(f"\n❌ [red]Monitor error: {e}[/red]")
 
@@ -513,7 +513,7 @@ def _run_interactive_menu():
     # Check if this is a first-time user
     if _is_first_time_user():
         console.print("🎯 [bold white]Welcome to MAGCAL![/bold white]\n")
-        console.print("👋 [yellow]Looks like this is your first time using MAGCAL![/yellow]")
+        console.print("👋 [white]Looks like this is your first time using MAGCAL![/white]")
         console.print("[dim]Let's get you set up with an interactive configuration...[/dim]\n")
         
         if questionary.confirm("🚀 Ready to configure your magnetometer calibration?", default=True).ask():
@@ -540,22 +540,22 @@ def _run_interactive_menu():
             "What would you like to do?",
             choices=menu_choices,
             style=questionary.Style([
-                ('selected', 'bold bg:#0087ff fg:#ffffff'),  # Blue background for selected
-                ('pointer', 'bold fg:#0087ff'),                # Blue arrow
-                ('highlighted', 'bold fg:#0087ff'),            # Blue text for highlighted
-                ('answer', 'bold fg:#00aa00'),                 # Green for final answer
+                ('selected', 'bold bg:#ff0000 fg:#ffffff'),  # Red background for selected
+                ('pointer', 'bold fg:#ff0000'),                # Red arrow
+                ('highlighted', 'bold fg:#ff0000'),            # Red text for highlighted
+                ('answer', 'bold fg:#ffffff'),                 # White for final answer
             ])
         ).ask()
         
         if choice is None:  # User pressed Ctrl+C
-            console.print("\n👋 [bold blue]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold blue]")
+            console.print("\n👋 [bold white]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold white]")
             break
         
         console.print()
         
         if choice == "1":
             # Run full calibration with default settings
-            console.print("🚀 [bold green]Starting full calibration with default settings...[/bold green]\n")
+            console.print("🚀 [bold white]Starting full calibration with default settings...[/bold white]\n")
             cal = MagnetometerCalibrator()
             try:
                 if _collect_data_with_progress(cal, 1000, True):
@@ -569,14 +569,14 @@ def _run_interactive_menu():
                 
         elif choice == "2":
             # Monitor real-time data
-            console.print("📡 [bold green]Starting real-time monitor...[/bold green]\n")
+            console.print("📡 [bold white]Starting real-time monitor...[/bold white]\n")
             cal = MagnetometerCalibrator()
             _monitor_realtime_data(cal)
             break
             
         elif choice == "3":
             # Calibrate from file
-            console.print("📁 [bold green]Calibrate from existing file[/bold green]\n")
+            console.print("📁 [bold white]Calibrate from existing file[/bold white]\n")
             
             # List available JSON files in output directory
             output_dir = "output"
@@ -640,7 +640,7 @@ def _run_interactive_menu():
                     
         elif choice == "4":
             # Interactive setup
-            console.print("⚙️ [bold green]Starting interactive setup...[/bold green]\n")
+            console.print("⚙️ [bold white]Starting interactive setup...[/bold white]\n")
             config = _get_interactive_config()
             
             if questionary.confirm("🚀 Start calibration with these settings?", default=True).ask():
@@ -665,10 +665,10 @@ def _run_interactive_menu():
                 
         elif choice == "5":
             # Show help
-            console.print("❓ [bold green]Available Commands:[/bold green]\n")
+            console.print("❓ [bold white]Available Commands:[/bold white]\n")
             
-            help_table = Table(title="🔧 Command Reference", style="blue")
-            help_table.add_column("Command", style="bold cyan")
+            help_table = Table(title="🔧 Command Reference", style="white")
+            help_table.add_column("Command", style="bold red")
             help_table.add_column("Description", style="white")
             
             help_table.add_row("magcal", "Show this interactive menu")
@@ -686,7 +686,7 @@ def _run_interactive_menu():
                 
         elif choice == "6":
             # Exit
-            console.print("👋 [bold blue]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold blue]")
+            console.print("👋 [bold white]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold white]")
             break
     
     console.print()
@@ -710,7 +710,7 @@ def _is_first_time_user():
 
 def _run_first_time_setup():
     """Run the first-time setup flow for new users"""
-    console.print("🛠️ [bold green]First-Time Setup[/bold green]\n")
+    console.print("🛠️ [bold white]First-Time Setup[/bold white]\n")
     
     # Show preparation instructions
     prep_panel = Panel(
@@ -721,26 +721,26 @@ def _run_first_time_setup():
         "4. 📝 You have the correct data format pattern\n\n"
         "[yellow]💡 Tip: Check your device documentation for data format details[/yellow]",
         title="🚀 Preparation Checklist",
-        style="yellow"
+        style="white"
     )
     console.print(prep_panel)
     console.print()
     
     if not questionary.confirm("✅ Have you completed the preparation steps above?", default=True).ask():
-        console.print("\n📖 [cyan]Please complete the preparation steps and run 'magcal' again when ready.[/cyan]")
+        console.print("\n📖 [white]Please complete the preparation steps and run 'magcal' again when ready.[/white]")
         console.print("💡 [dim]You can also check the README for detailed setup instructions.[/dim]\n")
         return
     
-    console.print("\n🎯 [bold cyan]Great! Let's configure your magnetometer...[/bold cyan]\n")
+    console.print("\n🎯 [bold white]Great! Let's configure your magnetometer...[/bold white]\n")
     
     # Get configuration interactively
     config = _get_interactive_config()
     
     # Show configuration summary
     console.print("📋 [bold]Configuration Summary:[/bold]\n")
-    summary_table = Table(style="cyan", show_header=False)
-    summary_table.add_column("Setting", style="bold")
-    summary_table.add_column("Value", style="green")
+    summary_table = Table(style="white", show_header=False)
+    summary_table.add_column("Setting", style="bold white")
+    summary_table.add_column("Value", style="bold red")
     
     summary_table.add_row("Serial Port", config['port'])
     summary_table.add_row("Baudrate", str(config['baudrate']))
@@ -759,7 +759,7 @@ def _run_first_time_setup():
         )
         
         try:
-            console.print("\n🎉 [bold green]Starting your first calibration![/bold green]\n")
+            console.print("\n🎉 [bold white]Starting your first calibration![/bold white]\n")
             console.print("📝 [yellow]Remember to rotate your device in ALL orientations during data collection![/yellow]\n")
             
             if _collect_data_with_progress(cal, config['samples'], True):
@@ -769,7 +769,7 @@ def _run_first_time_setup():
                 
                 # Show success message for first-time users
                 success_panel = Panel(
-                    "[bold green]🎉 Congratulations![/bold green]\n\n"
+                    "[bold white]🎉 Congratulations![/bold white]\n\n"
                     "You've successfully completed your first magnetometer calibration!\n\n"
                     "✅ Your calibration files are ready in the 'output' directory\n"
                     "✅ You can now run 'magcal' anytime for quick access to all features\n"
@@ -777,7 +777,7 @@ def _run_first_time_setup():
                     "✅ Use 'magcal from-file' to recalibrate existing data\n\n"
                     "[dim]Happy calibrating! 🛰️[/dim]",
                     title="🏁 Setup Complete",
-                    style="green"
+                    style="white"
                 )
                 console.print(success_panel)
             else:
@@ -785,7 +785,7 @@ def _run_first_time_setup():
                 
         except KeyboardInterrupt:
             _handle_interruption(cal)
-            console.print("\n💡 [cyan]Setup interrupted. Run 'magcal' again to continue setup or access the main menu.[/cyan]")
+            console.print("\n💡 [white]Setup interrupted. Run 'magcal' again to continue setup or access the main menu.[/white]")
     else:
         console.print("\n🔄 [yellow]Setup cancelled. You can run 'magcal' again anytime to continue.[/yellow]")
 
