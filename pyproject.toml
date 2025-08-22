@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magcal"
+version = "1.0.0"
+description = "Magnetometer Calibration Tool for Satellite/Embedded Systems"
+authors = [{name = "Lundeen Cahilly", email = "lundeen.cahilly@gmail.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "pyserial",
+    "rich",
+    "click",
+]
+
+[project.scripts]
+magcal = "magcal.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/lundeen06/magcal"
+Issues = "https://github.com/lundeen06/magcal/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["magcal*"]
