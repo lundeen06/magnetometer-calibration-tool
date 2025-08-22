@@ -17,11 +17,50 @@ from rich.columns import Columns
 from rich.status import Status
 from datetime import datetime
 import os
+import json
 import questionary
 
 from .core import MagnetometerCalibrator
 
 console = Console()
+
+CONFIG_FILE = os.path.expanduser("~/.magcal_config.json")
+
+# Default questionary style for all menus
+DEFAULT_STYLE = questionary.Style([
+    ('selected', 'bold bg:#ff0000 fg:#ffffff'),  # Red background for selected
+    ('pointer', 'bold fg:#ff0000'),              # Red arrow
+    ('highlighted', 'bold fg:#ff0000'),          # Red text for highlighted
+    ('answer', 'bold fg:#ffffff'),               # White for final answer
+])
+
+def _load_config():
+    """Load configuration from file"""
+    default_config = {
+        'port': '/dev/tty.usbmodem101',
+        'baudrate': 115200,
+        'pattern': None,
+        'samples': 5000,
+        'method': 'ellipsoid'
+    }
+    
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                saved_config = json.load(f)
+                default_config.update(saved_config)
+        except (json.JSONDecodeError, IOError):
+            pass
+    
+    return default_config
+
+def _save_config(config):
+    """Save configuration to file"""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+    except IOError:
+        console.print("[yellow]⚠️ Warning: Could not save configuration[/yellow]")
 
 def _convert_pattern_to_regex(pattern):
     """Convert simple pattern format to regex"""
@@ -423,61 +462,22 @@ def _handle_interruption(cal):
 def _get_interactive_config():
     """Get configuration interactively with questionary prompts"""
     
-    config = {}
+    # Load existing config
+    config = _load_config()
     
     # Serial configuration
     console.print("🔌 [bold]Serial Configuration[/bold]\n")
-    config['port'] = questionary.text("Serial port:", default="/dev/tty.usbmodem101").ask()
-    config['baudrate'] = int(questionary.text("Baudrate:", default="115200").ask())
+    config['port'] = questionary.text("Serial port:", default=config['port']).ask()
+    config['baudrate'] = int(questionary.text("Baudrate:", default=str(config['baudrate'])).ask())
     console.print()
     
     # Data format - REQUIRED
-    console.print("📡 [bold]Data Format Configuration[/bold]\n")
-    console.print("[white]Your device sends magnetometer data in a specific format.[/white]")
-    console.print("[white]Tell us the format by using \\x, \\y, \\z where the numbers appear.[/white]\n")
-    
-    console.print("[dim]Examples:[/dim]")
-    console.print("[dim]  • If your data looks like: 'Magnetometer: [1.23, 4.56, 7.89]'[/dim]")
-    console.print("[dim]    Then enter: 'Magnetometer: [\\x, \\y, \\z]'[/dim]")
-    console.print("[dim]  • If your data looks like: 'MAG: x=1.23 y=4.56 z=7.89'[/dim]")
-    console.print("[dim]    Then enter: 'MAG: x=\\x y=\\y z=\\z'[/dim]")
-    console.print("[dim]  • If your data looks like: '1.23,4.56,7.89'[/dim]")
-    console.print("[dim]    Then enter: '\\x,\\y,\\z'[/dim]\n")
-    
-    while True:
-        pattern_input = questionary.text(
-            "Enter your data format pattern:",
-            instruction="(use \\x, \\y, \\z for numbers)"
-        ).ask()
-        
-        if not pattern_input:
-            console.print("[red]❌ Data format is required. Please enter a pattern.[/red]\n")
-            continue
-            
-        # Check if pattern contains x, y, z placeholders
-        if '\\x' not in pattern_input or '\\y' not in pattern_input or '\\z' not in pattern_input:
-            console.print("[red]❌ Pattern must contain \\x, \\y, and \\z placeholders.[/red]\n")
-            continue
-            
-        # Convert simple pattern to regex
-        regex_pattern = pattern_input.replace('\\x', '([-\\d.]+)').replace('\\y', '([-\\d.]+)').replace('\\z', '([-\\d.]+)')
-        # Escape special regex characters except our groups
-        import re
-        regex_pattern = re.escape(regex_pattern).replace('\\(\\[\\-\\\\d\\.\\]\\+\\)', '([-\\d.]+)')
-        
-        console.print(f"[dim]Generated regex: {regex_pattern}[/dim]")
-        
-        if questionary.confirm("Does this look correct?", default=True).ask():
-            config['pattern'] = regex_pattern
-            break
-        else:
-            console.print("[yellow]Let's try again...[/yellow]\n")
-    
+    config['pattern'] = _get_data_pattern()
     console.print()
     
     # Sample configuration
     console.print("📊 [bold]Sample Configuration[/bold]\n")
-    config['samples'] = int(questionary.text("Number of samples:", default="5000").ask())
+    config['samples'] = int(questionary.text("Number of samples:", default=str(config['samples'])).ask())
     console.print()
     
     # Calibration method
@@ -488,9 +488,13 @@ def _get_interactive_config():
             questionary.Choice("🌐 Ellipsoid (Advanced - hard + soft iron correction)", value="ellipsoid"),
             questionary.Choice("⚪ Sphere (Simple - hard iron correction only)", value="sphere")
         ],
-        default="ellipsoid"
+        style=DEFAULT_STYLE
     ).ask()
     console.print()
+    
+    # Save configuration
+    _save_config(config)
+    console.print("💾 [dim]Configuration saved[/dim]\n")
     
     return config
 
@@ -580,7 +584,7 @@ def _run_interactive_menu():
         questionary.Choice("🚀 Run Full Calibration", value="1"),
         questionary.Choice("📡 Monitor Real-time Data", value="2"), 
         questionary.Choice("📁 Calibrate from File", value="3"),
-        questionary.Choice("⚙️ Interactive Setup", value="4"),
+        questionary.Choice("⚙️ Settings", value="4"),
         questionary.Choice("❓ Show Help", value="5"),
         questionary.Choice("🚪 Exit", value="6")
     ]
@@ -589,12 +593,7 @@ def _run_interactive_menu():
         choice = questionary.select(
             "What would you like to do?",
             choices=menu_choices,
-            style=questionary.Style([
-                ('selected', 'bold bg:#ff0000 fg:#ffffff'),  # Red background for selected
-                ('pointer', 'bold fg:#ff0000'),                # Red arrow
-                ('highlighted', 'bold fg:#ff0000'),            # Red text for highlighted
-                ('answer', 'bold fg:#ffffff'),                 # White for final answer
-            ])
+            style=DEFAULT_STYLE
         ).ask()
         
         if choice is None:  # User pressed Ctrl+C
@@ -604,12 +603,22 @@ def _run_interactive_menu():
         console.print()
         
         if choice == "1":
-            # Run full calibration with default settings
-            console.print("🚀 [bold white]Starting full calibration with default settings...[/bold white]\n")
-            cal = MagnetometerCalibrator()
+            # Run full calibration with saved settings
+            config = _load_config()
+            
+            if config['pattern'] is None:
+                console.print("[yellow]⚠️ No data pattern configured. Please configure settings first.[/yellow]\n")
+                continue
+                
+            console.print("🚀 [bold white]Starting full calibration with saved settings...[/bold white]\n")
+            cal = MagnetometerCalibrator(
+                port=config['port'],
+                baudrate=config['baudrate'],
+                data_pattern=_convert_pattern_to_regex(config['pattern'])
+            )
             try:
-                if _collect_data_with_progress(cal, 1000, True):
-                    _perform_calibration_with_status(cal, 'ellipsoid')
+                if _collect_data_with_progress(cal, config['samples'], True):
+                    _perform_calibration_with_status(cal, config['method'])
                     _display_results(cal)
                     _save_results_with_status(cal)
                     break
@@ -619,8 +628,18 @@ def _run_interactive_menu():
                 
         elif choice == "2":
             # Monitor real-time data
+            config = _load_config()
+            
+            if config['pattern'] is None:
+                console.print("[yellow]⚠️ No data pattern configured. Please configure settings first.[/yellow]\n")
+                continue
+                
             console.print("📡 [bold white]Starting real-time monitor...[/bold white]\n")
-            cal = MagnetometerCalibrator()
+            cal = MagnetometerCalibrator(
+                port=config['port'],
+                baudrate=config['baudrate'],
+                data_pattern=_convert_pattern_to_regex(config['pattern'])
+            )
             _monitor_realtime_data(cal)
             break
             
@@ -689,29 +708,9 @@ def _run_interactive_menu():
                     continue
                     
         elif choice == "4":
-            # Interactive setup
-            console.print("⚙️ [bold white]Starting interactive setup...[/bold white]\n")
-            config = _get_interactive_config()
-            
-            if questionary.confirm("🚀 Start calibration with these settings?", default=True).ask():
-                cal = MagnetometerCalibrator(
-                    port=config['port'],
-                    baudrate=config['baudrate'],
-                    data_pattern=config.get('pattern')
-                )
-                
-                try:
-                    if _collect_data_with_progress(cal, config['samples'], True):
-                        _perform_calibration_with_status(cal, config['method'])
-                        _display_results(cal)
-                        _save_results_with_status(cal)
-                        break
-                except KeyboardInterrupt:
-                    _handle_interruption(cal)
-                    break
-            else:
-                console.print("🔄 [yellow]Returning to main menu...[/yellow]\n")
-                continue
+            # Settings menu
+            _show_settings_menu()
+            continue
                 
         elif choice == "5":
             # Show help
@@ -741,22 +740,144 @@ def _run_interactive_menu():
     
     console.print()
 
+def _show_settings_menu():
+    """Show settings configuration menu"""
+    console.print("⚙️ [bold white]Settings Configuration[/bold white]\n")
+    
+    config = _load_config()
+    
+    # Show current settings
+    console.print("📋 [bold]Current Settings:[/bold]\n")
+    settings_table = Table(style="white", show_header=False)
+    settings_table.add_column("Setting", style="bold white")
+    settings_table.add_column("Value", style="red")
+    
+    settings_table.add_row("Serial Port", config['port'])
+    settings_table.add_row("Baudrate", str(config['baudrate']))
+    settings_table.add_row("Data Pattern", config['pattern'] or "[red]Not configured[/red]")
+    settings_table.add_row("Sample Count", str(config['samples']))
+    settings_table.add_row("Method", config['method'].title())
+    
+    console.print(settings_table)
+    console.print()
+    
+    # Settings menu
+    settings_choices = [
+        questionary.Choice("🔌 Edit Serial Port", value="port"),
+        questionary.Choice("⚡ Edit Baudrate", value="baudrate"),
+        questionary.Choice("📡 Edit Data Pattern", value="pattern"),
+        questionary.Choice("📊 Edit Sample Count", value="samples"),
+        questionary.Choice("🧮 Edit Calibration Method", value="method"),
+        questionary.Choice("🔄 Configure All Settings", value="all"),
+        questionary.Choice("🔙 Back to Main Menu", value="back")
+    ]
+    
+    while True:
+        choice = questionary.select(
+            "What would you like to edit?",
+            choices=settings_choices,
+            style=DEFAULT_STYLE
+        ).ask()
+        
+        if choice is None or choice == "back":
+            break
+            
+        console.print()
+        
+        if choice == "port":
+            config['port'] = questionary.text("Serial port:", default=config['port']).ask()
+        elif choice == "baudrate":
+            config['baudrate'] = int(questionary.text("Baudrate:", default=str(config['baudrate'])).ask())
+        elif choice == "pattern":
+            config['pattern'] = _get_data_pattern()
+        elif choice == "samples":
+            config['samples'] = int(questionary.text("Number of samples:", default=str(config['samples'])).ask())
+        elif choice == "method":
+            config['method'] = questionary.select(
+                "Choose calibration method:",
+                choices=[
+                    questionary.Choice("🌐 Ellipsoid (Advanced - hard + soft iron correction)", value="ellipsoid"),
+                    questionary.Choice("⚪ Sphere (Simple - hard iron correction only)", value="sphere")
+                ],
+                style=DEFAULT_STYLE
+            ).ask()
+        elif choice == "all":
+            config = _get_interactive_config()
+            break
+        
+        # Save updated config
+        _save_config(config)
+        console.print("💾 [dim]Setting saved[/dim]\n")
+        
+        # Update the display
+        console.print("📋 [bold]Updated Settings:[/bold]\n")
+        settings_table = Table(style="white", show_header=False)
+        settings_table.add_column("Setting", style="bold white")
+        settings_table.add_column("Value", style="red")
+        
+        settings_table.add_row("Serial Port", config['port'])
+        settings_table.add_row("Baudrate", str(config['baudrate']))
+        settings_table.add_row("Data Pattern", config['pattern'] or "[red]Not configured[/red]")
+        settings_table.add_row("Sample Count", str(config['samples']))
+        settings_table.add_row("Method", config['method'].title())
+        
+        console.print(settings_table)
+        console.print()
+
+def _get_data_pattern():
+    """Get data pattern with validation"""
+    console.print("📡 [bold]Data Format Configuration[/bold]\n")
+    console.print("[white]Your device sends magnetometer data in a specific format.[/white]")
+    console.print("[white]Tell us the format by using \\x, \\y, \\z where the numbers appear.[/white]\n")
+    
+    console.print("[dim]Examples:[/dim]")
+    console.print("[dim]  • If your data looks like: 'Magnetometer: [1.23, 4.56, 7.89]'[/dim]")
+    console.print("[dim]    Then enter: 'Magnetometer: [\\x, \\y, \\z]'[/dim]")
+    console.print("[dim]  • If your data looks like: 'MAG: x=1.23 y=4.56 z=7.89'[/dim]")
+    console.print("[dim]    Then enter: 'MAG: x=\\x y=\\y z=\\z'[/dim]")
+    console.print("[dim]  • If your data looks like: '1.23,4.56,7.89'[/dim]")
+    console.print("[dim]    Then enter: '\\x,\\y,\\z'[/dim]\n")
+    
+    while True:
+        pattern_input = questionary.text(
+            "Enter your data format pattern:",
+        ).ask()
+        
+        if not pattern_input:
+            console.print("[red]❌ Data format is required. Please enter a pattern.[/red]\n")
+            continue
+            
+        # Check if pattern contains x, y, z placeholders
+        if '\\x' not in pattern_input or '\\y' not in pattern_input or '\\z' not in pattern_input:
+            console.print("[red]❌ Pattern must contain \\x, \\y, and \\z placeholders.[/red]\n")
+            continue
+            
+        # Convert simple pattern to regex
+        regex_pattern = pattern_input.replace('\\x', '([-\\d.]+)').replace('\\y', '([-\\d.]+)').replace('\\z', '([-\\d.]+)')
+        # Escape special regex characters except our groups
+        import re
+        regex_pattern = re.escape(regex_pattern).replace('\\(\\[\\-\\\\d\\.\\]\\+\\)', '([-\\d.]+)')
+        
+        console.print(f"\n[dim]Generated regex: {regex_pattern}[/dim]\n")
+        
+        if questionary.confirm("Does this look correct?", default=True).ask():
+            return pattern_input  # Return the simple pattern, not regex
+        else:
+            console.print("[yellow]Let's try again...[/yellow]\n")
+
 def _is_first_time_user():
-    """Check if this is a first-time user by looking for previous calibration files or config"""
-    output_dir = "output"
+    """Check if this is a first-time user by looking for config file"""
+    config = _load_config()
     
-    # Check if output directory exists and has any calibration files
-    if os.path.exists(output_dir):
-        json_files = [f for f in os.listdir(output_dir) if f.endswith('.json')]
-        header_files = [f for f in os.listdir(output_dir) if f.endswith('.h')]
-        if json_files or header_files:
-            return False
+    # If no pattern is configured, treat as first-time user
+    if config['pattern'] is None:
+        return True
     
-    # Could also check for a config file in the future
-    # if os.path.exists('.magcal_config'):
-    #     return False
-    
-    return True
+    # Check if config file exists
+    if not os.path.exists(CONFIG_FILE):
+        return True
+        
+    return False
 
 def _run_first_time_setup():
     """Run the first-time setup flow for new users"""
