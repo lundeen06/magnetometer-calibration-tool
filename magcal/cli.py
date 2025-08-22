@@ -17,6 +17,7 @@ from rich.columns import Columns
 from rich.status import Status
 from datetime import datetime
 import os
+import questionary
 
 from .core import MagnetometerCalibrator
 
@@ -150,22 +151,19 @@ def monitor(port, baudrate, pattern):
 def _display_header():
     """Display beautiful application header with ASCII art"""
     ascii_banner = """
-[bold blue]
 ███╗   ███╗ █████╗  ██████╗  ██████╗ █████╗ ██╗     
 ████╗ ████║██╔══██╗██╔════╝ ██╔════╝██╔══██╗██║     
 ██╔████╔██║███████║██║  ███╗██║     ███████║██║     
 ██║╚██╔╝██║██╔══██║██║   ██║██║     ██╔══██║██║     
 ██║ ╚═╝ ██║██║  ██║╚██████╔╝╚██████╗██║  ██║███████╗
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
-[/bold blue]
 
-[dim]Magnetometer Calibration Tool for Satellite & Embedded Systems[/dim]
-[dim]🧭 Precision calibration for space-grade magnetometers 🛰️[/dim]
+[dim]A CLI-based magnetometer calibration tool for embedded systems[/dim]
 """
     
     console.print(Panel(
         Align.center(ascii_banner.strip()),
-        style="bright_blue",
+        style="white",
         padding=(1, 2),
         border_style="blue"
     ))
@@ -205,7 +203,7 @@ def _collect_data_with_progress(cal, min_samples, enable_plot):
     console.print(prep_panel)
     console.print()
     
-    if not Confirm.ask("Ready to start data collection?"):
+    if not questionary.confirm("Ready to start data collection?", default=True).ask():
         return False
     
     # Override the collect_data method to use Rich progress
@@ -408,34 +406,40 @@ def _handle_interruption(cal):
             console.print("✅ [green]Partial data saved[/green]")
 
 def _get_interactive_config():
-    """Get configuration interactively with Rich prompts"""
+    """Get configuration interactively with questionary prompts"""
     
     config = {}
     
     # Serial configuration
-    console.print("🔌 [bold]Serial Configuration[/bold]")
-    config['port'] = Prompt.ask("Serial port", default="/dev/tty.usbmodem101")
-    config['baudrate'] = int(Prompt.ask("Baudrate", default="115200"))
+    console.print("🔌 [bold]Serial Configuration[/bold]\n")
+    config['port'] = questionary.text("Serial port:", default="/dev/tty.usbmodem101").ask()
+    config['baudrate'] = int(questionary.text("Baudrate:", default="115200").ask())
     console.print()
     
     # Data format
-    console.print("📡 [bold]Data Format[/bold]")
-    if Confirm.ask("Use custom data pattern?", default=False):
+    console.print("📡 [bold]Data Format[/bold]\n")
+    use_custom = questionary.confirm("Use custom data pattern?", default=False).ask()
+    if use_custom:
         console.print("\n[yellow]Enter regex pattern with 3 capturing groups for x, y, z values[/yellow]")
-        console.print("[dim]Example: r'MAG: ([-\\d.]+),([-\\d.]+),([-\\d.]+)'[/dim]")
-        config['pattern'] = Prompt.ask("Pattern")
+        console.print("[dim]Example: r'MAG: ([-\\d.]+),([-\\d.]+),([-\\d.]+)'[/dim]\n")
+        config['pattern'] = questionary.text("Pattern:").ask()
     console.print()
     
     # Sample configuration
-    console.print("📊 [bold]Sample Configuration[/bold]")
-    config['samples'] = int(Prompt.ask("Number of samples", default="1000"))
+    console.print("📊 [bold]Sample Configuration[/bold]\n")
+    config['samples'] = int(questionary.text("Number of samples:", default="1000").ask())
     console.print()
     
     # Calibration method
-    console.print("🧮 [bold]Calibration Method[/bold]")
-    console.print("[dim]• sphere: Simple hard iron correction (offset only)[/dim]")
-    console.print("[dim]• ellipsoid: Advanced correction (hard + soft iron effects)[/dim]")
-    config['method'] = Prompt.ask("Method", choices=["sphere", "ellipsoid"], default="ellipsoid")
+    console.print("🧮 [bold]Calibration Method[/bold]\n")
+    config['method'] = questionary.select(
+        "Choose calibration method:",
+        choices=[
+            questionary.Choice("🌐 Ellipsoid (Advanced - hard + soft iron correction)", value="ellipsoid"),
+            questionary.Choice("⚪ Sphere (Simple - hard iron correction only)", value="sphere")
+        ],
+        default="ellipsoid"
+    ).ask()
     console.print()
     
     return config
@@ -507,31 +511,34 @@ def _run_interactive_menu():
     _display_header()
     
     console.print("🎯 [bold cyan]Welcome to MAGCAL![/bold cyan]\n")
-    console.print("What would you like to do today?\n")
+    console.print("[dim]Use ↑↓ arrow keys to navigate and Enter to select[/dim]\n")
     
-    menu_options = {
-        "1": ("🚀 Run Full Calibration", "Complete magnetometer calibration workflow"),
-        "2": ("📡 Monitor Real-time Data", "View live magnetometer readings"),
-        "3": ("📁 Calibrate from File", "Use existing data file for calibration"),
-        "4": ("⚙️ Interactive Setup", "Guided configuration and calibration"),
-        "5": ("❓ Show Help", "Display all available commands"),
-        "6": ("🚪 Exit", "Exit the application")
-    }
-    
-    # Display menu
-    menu_table = Table(title="📋 Main Menu", style="cyan", show_header=False)
-    menu_table.add_column("Option", style="bold yellow", width=8)
-    menu_table.add_column("Action", style="bold white")
-    menu_table.add_column("Description", style="dim")
-    
-    for key, (action, description) in menu_options.items():
-        menu_table.add_row(f"[{key}]", action, description)
-    
-    console.print(menu_table)
-    console.print()
+    # Create menu choices with questionary
+    menu_choices = [
+        questionary.Choice("🚀 Run Full Calibration", value="1"),
+        questionary.Choice("📡 Monitor Real-time Data", value="2"), 
+        questionary.Choice("📁 Calibrate from File", value="3"),
+        questionary.Choice("⚙️ Interactive Setup", value="4"),
+        questionary.Choice("❓ Show Help", value="5"),
+        questionary.Choice("🚪 Exit", value="6")
+    ]
     
     while True:
-        choice = Prompt.ask("🎯 Select an option", choices=list(menu_options.keys()), default="1")
+        choice = questionary.select(
+            "What would you like to do?",
+            choices=menu_choices,
+            style=questionary.Style([
+                ('selected', 'bold bg:#0087ff fg:#ffffff'),  # Blue background for selected
+                ('pointer', 'bold fg:#0087ff'),                # Blue arrow
+                ('highlighted', 'bold fg:#0087ff'),            # Blue text for highlighted
+                ('answer', 'bold fg:#00aa00'),                 # Green for final answer
+            ])
+        ).ask()
+        
+        if choice is None:  # User pressed Ctrl+C
+            console.print("\n👋 [bold blue]Thanks for using MAGCAL! Happy calibrating! 🛰️[/bold blue]")
+            break
+        
         console.print()
         
         if choice == "1":
@@ -624,7 +631,7 @@ def _run_interactive_menu():
             console.print("⚙️ [bold green]Starting interactive setup...[/bold green]\n")
             config = _get_interactive_config()
             
-            if Confirm.ask("🚀 Start calibration with these settings?"):
+            if questionary.confirm("🚀 Start calibration with these settings?", default=True).ask():
                 cal = MagnetometerCalibrator(
                     port=config['port'],
                     baudrate=config['baudrate'],
@@ -662,7 +669,7 @@ def _run_interactive_menu():
             console.print(help_table)
             console.print()
             
-            if not Confirm.ask("🔄 Return to main menu?", default=True):
+            if not questionary.confirm("🔄 Return to main menu?", default=True).ask():
                 break
                 
         elif choice == "6":

@@ -28,6 +28,7 @@ dependencies = [
     "pyserial",
     "rich",
     "click",
+    "questionary",
 ]
 
 [project.scripts]
