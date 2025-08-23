@@ -5,21 +5,30 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "magcal"
 version = "1.0.0"
-description = "A CLI-based Magnetometer Calibration Tool"
+description = "Magnetometer calibration python CLI tool for robotics, drones, satellites, and embedded systems"
 authors = [{name = "Lundeen Cahilly", email = "lundeen.cahilly@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.8"
+keywords = ["magnetometer", "calibration", "compass", "hard-iron", "soft-iron", "satellite", "drone", "embedded", "magnetic-field", "sensor-fusion", "aerospace", "cubesat", "navigation", "ellipsoid-fitting", "bias-correction"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
+    "Intended Audience :: Developers", 
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Manufacturing",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.9", 
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: System :: Hardware",
+    "Topic :: Software Development :: Embedded Systems",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
 ]
 dependencies = [
     "numpy",
