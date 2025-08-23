@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "magcal"
 version = "1.0.0"
-description = "Magnetometer Calibration Tool for Satellite/Embedded Systems"
+description = "A CLI-based Magnetometer Calibration Tool"
 authors = [{name = "Lundeen Cahilly", email = "lundeen.cahilly@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
