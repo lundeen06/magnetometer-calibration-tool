@@ -205,14 +205,15 @@ def monitor(port, baudrate, pattern):
 def _display_header():
     """Display beautiful application header with ASCII art"""
     ascii_banner = """
-███╗   ███╗ █████╗  ██████╗  ██████╗ █████╗ ██╗     
-████╗ ████║██╔══██╗██╔════╝ ██╔════╝██╔══██╗██║     
-██╔████╔██║███████║██║  ███╗██║     ███████║██║     
-██║╚██╔╝██║██╔══██║██║   ██║██║     ██╔══██║██║     
-██║ ╚═╝ ██║██║  ██║╚██████╔╝╚██████╗██║  ██║███████╗
-╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+███╗   ███╗  █████╗   ██████╗   ██████╗  █████╗  ██╗     
+████╗ ████║ ██╔══██╗ ██╔════╝  ██╔════╝ ██╔══██╗ ██║     
+██╔████╔██║ ███████║ ██║  ███╗ ██║      ███████║ ██║     
+██║╚██╔╝██║ ██╔══██║ ██║   ██║ ██║      ██╔══██║ ██║     
+██║ ╚═╝ ██║ ██║  ██║ ╚██████╔╝ ╚██████╗ ██║  ██║ ███████╗
+╚═╝     ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝ ╚═╝  ╚═╝ ╚══════╝
 
-[white]A CLI-based magnetometer calibration tool for embedded systems[/white]
+[white]A CLI-based magnetometer calibration tool[/white]
+[dim][white]developed for Stanford SSI's 2U Cubesat SAMWISE[/white][/dim]
 """
     
     console.print(Panel(
@@ -487,8 +488,7 @@ def _get_interactive_config():
         choices=[
             questionary.Choice("🌐 Ellipsoid (Advanced - hard + soft iron correction)", value="ellipsoid"),
             questionary.Choice("⚪ Sphere (Simple - hard iron correction only)", value="sphere")
-        ],
-        style=DEFAULT_STYLE
+        ]
     ).ask()
     console.print()
     
@@ -776,7 +776,12 @@ def _show_settings_menu():
         choice = questionary.select(
             "What would you like to edit?",
             choices=settings_choices,
-            style=DEFAULT_STYLE
+            style=questionary.Style([
+                ('selected', 'bold bg:#ff0000 fg:#ffffff'),
+                ('pointer', 'bold fg:#ff0000'),
+                ('highlighted', 'bold fg:#ff0000'),
+                ('answer', 'bold fg:#ffffff'),
+            ])
         ).ask()
         
         if choice is None or choice == "back":
@@ -798,8 +803,7 @@ def _show_settings_menu():
                 choices=[
                     questionary.Choice("🌐 Ellipsoid (Advanced - hard + soft iron correction)", value="ellipsoid"),
                     questionary.Choice("⚪ Sphere (Simple - hard iron correction only)", value="sphere")
-                ],
-                style=DEFAULT_STYLE
+                ]
             ).ask()
         elif choice == "all":
             config = _get_interactive_config()

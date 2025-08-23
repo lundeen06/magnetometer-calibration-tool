@@ -1,23 +1,24 @@
 # 🧭 MAGCAL - Magnetometer Calibration Tool
 
-A CLI-based magnetometer calibration tool for embedded systems.
+A CLI-based magnetometer calibration tool.
 
 ```
-███╗   ███╗ █████╗  ██████╗  ██████╗ █████╗ ██╗     
-████╗ ████║██╔══██╗██╔════╝ ██╔════╝██╔══██╗██║     
-██╔████╔██║███████║██║  ███╗██║     ███████║██║     
-██║╚██╔╝██║██╔══██║██║   ██║██║     ██╔══██║██║     
-██║ ╚═╝ ██║██║  ██║╚██████╔╝╚██████╗██║  ██║███████╗
-╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+███╗   ███╗  █████╗   ██████╗   ██████╗  █████╗  ██╗     
+████╗ ████║ ██╔══██╗ ██╔════╝  ██╔════╝ ██╔══██╗ ██║     
+██╔████╔██║ ███████║ ██║  ███╗ ██║      ███████║ ██║     
+██║╚██╔╝██║ ██╔══██║ ██║   ██║ ██║      ██╔══██║ ██║     
+██║ ╚═╝ ██║ ██║  ██║ ╚██████╔╝ ╚██████╗ ██║  ██║ ███████╗
+╚═╝     ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝ ╚═╝  ╚═╝ ╚══════╝
 ```
 
 ## ✨ Features
 
-- 🎨 **Beautiful CLI Interface** - Rich-powered interface with progress bars, tables, and real-time displays
-- 🛰️ **Space-Grade Calibration** - Advanced ellipsoid fitting for hard + soft iron correction
+- 🛰️ **Space-Grade Calibration** - Advanced ellipsoid fitting for hard + soft iron correction. Used for Stanford SSI's 2U Cubesat SAMWISE :)
 - 📊 **Real-Time Monitoring** - Live data visualization during collection
-- 🔄 **Auto-Reconnection** - Handles watchdog reboots seamlessly
-- 📁 **Multiple Input Sources** - Serial data collection or file-based calibration
+- 📡 **Universal Serial Support** - Reads magnetic field data from any
+  serial device with configurable data patterns
+- 📟 **CLI Interface** - Interactive menus and command-line options for easy
+   setup and operation without editing config files
 - 💾 **Embedded-Ready Output** - Generates C header files for direct integration
 
 ## 🚀 Quick Start
@@ -78,28 +79,6 @@ Options:
   --no-plot             Disable real-time plotting
 ```
 
-### Examples
-
-```bash
-# Basic calibration with defaults
-magcal calibrate
-
-# Custom port and sample count
-magcal calibrate --port /dev/ttyUSB0 --samples 2000
-
-# Sphere calibration (hard iron only)
-magcal calibrate --method sphere
-
-# Custom data pattern
-magcal calibrate --pattern "MAG: ([-\d.]+),([-\d.]+),([-\d.]+)"
-
-# Monitor real-time data
-magcal monitor --port /dev/ttyUSB0
-
-# Calibrate from existing data
-magcal from-file data/mag_calibration_20240101_120000.json
-```
-
 ## 🔧 Prerequisites
 
 Before running calibration:
@@ -141,6 +120,7 @@ Calibration generates files in the `output/` directory:
 
 Include the header file in your embedded project:
 
+Example: 
 ```c
 #include "mag_calibration_20240101_120000.h"
 
@@ -163,39 +143,6 @@ The tool provides quality metrics:
 | < 0.10 | 🟡 Good |
 | < 0.20 | 🟠 Fair |
 | ≥ 0.20 | 🔴 Poor - collect more data |
-
-## 🔍 Troubleshooting
-
-### No Data Being Collected
-- Check serial port path with `ls /dev/tty*`
-- Verify baudrate matches your device
-- Ensure device is sending magnetometer data
-- Check data format matches expected pattern
-
-### Poor Calibration Quality
-- Collect more samples (increase `--samples`)
-- Ensure full 3D rotation during collection
-- Check for electromagnetic interference
-- Verify raw (unnormalized) magnetometer values
-
-### Connection Issues
-- The tool auto-reconnects on watchdog reboots
-- Check USB cable and connections
-- Verify device permissions: `sudo chmod 666 /dev/ttyUSB0`
-
-## 🛠️ Development
-
-Install in development mode:
-
-```bash
-pip install -e .
-```
-
-Run tests:
-
-```bash
-python -m pytest tests/
-```
 
 ## 📝 License
 
