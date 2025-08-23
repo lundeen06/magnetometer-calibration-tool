@@ -55,11 +55,17 @@ Works with pretty much any 3-axis magnetometer: RM3100, HMC5883L, MPU9250, LSM9D
 
 ### Installation
 
-Clone and install the package:
+Install directly from PyPI:
 
 ```bash
-git clone <repository-url>
-cd magcal
+pip install magcal
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/lundeen06/magnetometer-calibration-tool
+cd magnetometer-calibration-tool
 pip install -e .
 ```
 
@@ -225,7 +231,7 @@ The tool provides quality metrics:
 
 ## 📝 License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
