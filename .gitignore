@@ -1,7 +1,9 @@
 *.egg-info
 *.egg
 /build
+/dist
 /output
 __pycache__/
 *.pyc
-.DS_Store
+.DS_STORE
+.env
