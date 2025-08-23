@@ -13,7 +13,7 @@
 ╚═╝     ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝ ╚═╝  ╚═╝ ╚══════╝
 ```
 
-**Magnetometer calibration CLI tool using ellipsoid correction for robotics, drones, satellites, and other critical embedded systems. Originally developed in python for Stanford SSI's satellite SAMWISE for attitude determination.**
+**Magnetometer calibration CLI tool using ellipsoid correction for robotics, drones, satellites, and other critical embedded systems. Originally developed in python for Stanford SSI's satellite SAMWISE.**
 
 ## Why MAGCAL?
 
