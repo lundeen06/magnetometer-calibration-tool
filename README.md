@@ -1,7 +1,3 @@
-# 🧭 MAGCAL - Magnetometer Calibration Tool
-
-A CLI-based magnetometer calibration tool.
-
 ```
 ███╗   ███╗  █████╗   ██████╗   ██████╗  █████╗  ██╗     
 ████╗ ████║ ██╔══██╗ ██╔════╝  ██╔════╝ ██╔══██╗ ██║     
@@ -10,6 +6,8 @@ A CLI-based magnetometer calibration tool.
 ██║ ╚═╝ ██║ ██║  ██║ ╚██████╔╝ ╚██████╗ ██║  ██║ ███████╗
 ╚═╝     ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝ ╚═╝  ╚═╝ ╚══════╝
 ```
+A CLI-based magnetometer calibration tool
+
 
 ## ✨ Features
 
