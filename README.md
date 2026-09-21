@@ -1,4 +1,4 @@
-# MAGCAL - Magnetometer calibration python tool for robotics, drones, satellites, and embedded systems
+# MAGCAL - Magnetometer calibration Python tool for robotics, drones, satellites, and embedded systems
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -13,7 +13,7 @@
 ╚═╝     ╚═╝ ╚═╝  ╚═╝  ╚═════╝   ╚═════╝ ╚═╝  ╚═╝ ╚══════╝
 ```
 
-**Magnetometer calibration CLI tool using ellipsoid correction for robotics, drones, satellites, and other critical embedded systems. Originally developed in python for Stanford SSI's satellite SAMWISE.**
+**Magnetometer calibration CLI tool using ellipsoid correction for robotics, drones, satellites, and other critical embedded systems. Originally developed in Python for Stanford SSI's satellite SAMWISE.**
 
 ## Why MAGCAL?
 
@@ -25,7 +25,7 @@ MAGCAL fixes this. We use ellipsoid fitting (the gold standard for magnetometer 
 
 ## What can you use it for?
 
-- **Satellites & Cubesats** - Get accurate attitude determination (like we did for Stanford SSI's SAMWISE)
+- **Satellites & CubeSats** - Get accurate attitude determination (like we did for Stanford SSI's SAMWISE)
 - **Drones & UAVs** - Fix that wonky compass behavior once and for all
 - **Marine navigation** - Reliable compass readings for boats and ships
 - **Robotics** - Dead reckoning and navigation that actually works
